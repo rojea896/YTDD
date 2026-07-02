@@ -16,6 +16,7 @@ APP_DIR = os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "YT
 HISTORY_FILE = os.path.join(APP_DIR, "history.json")
 SETTINGS_FILE = os.path.join(APP_DIR, "settings.json")
 MAX_HISTORY_ENTRIES = 500
+HISTORY_SIZE_WARNING_BYTES = 5 * 1024 * 1024  # 5 MB
 
 DEFAULT_SETTINGS = {
     "darkMode": True,
@@ -97,6 +98,13 @@ def save_history(history):
     os.makedirs(APP_DIR, exist_ok=True)
     with open(HISTORY_FILE, "w", encoding="utf-8") as f:
         json.dump(history[:MAX_HISTORY_ENTRIES], f, indent=2)
+
+
+def history_file_size():
+    try:
+        return os.path.getsize(HISTORY_FILE)
+    except OSError:
+        return 0
 
 
 def fetch_info(url, settings):

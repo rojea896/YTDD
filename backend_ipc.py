@@ -45,6 +45,10 @@ class RpcServer:
     def get_history(self, params):
         return backend.load_history()
 
+    def check_history_size(self, params):
+        size = backend.history_file_size()
+        return {"sizeBytes": size, "tooBig": size >= backend.HISTORY_SIZE_WARNING_BYTES}
+
     def clear_history(self, params):
         backend.save_history([])
         return True
