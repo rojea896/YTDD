@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>YT-DLP Downloader</title>
+<style>
+  :root {
+    --accent: #4f46e5;
+    --success: #059669;
+    --danger: #dc2626;
+    --titlebar: #111827;
+    --video-icon: #059669;
+    --audio-icon: #7c3aed;
+    --tooltip-bg: #111827;
+    --tooltip-text: #ffffff;
+  }
+  html.dark {
+    --bg: #111827;
+    --text: #f3f4f6;
+    --text2: #9ca3af;
+    --section-bg: #1f2937;
+    --section-border: #374151;
+    --input-bg: #1f2937;
+    --skeleton: #374151;
+  }
+  html.light {
+    --bg: #ffffff;
+    --text: #111827;
+    --text2: #6b7280;
+    --section-bg: #f9fafb;
+    --section-border: #e5e7eb;
+    --input-bg: #ffffff;
+    --skeleton: #f3f4f6;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: var(--bg); }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: var(--text);
+    user-select: none;
+  }
+  .card {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  /* Body */
+  .body-content {
+    position: relative;
+    flex: 1;
+    overflow-y: auto;
+    padding: 22px 24px 20px;
+  }
+  .settings-btn {
+    position: absolute; top: 2px; right: 0;
+    width: auto; height: auto; padding: 4px;
+    border: none;
+    background: none;
+    color: var(--text2);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .settings-btn:hover { color: var(--text); }
+  .section-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--text2); margin-bottom: 8px;
+  }
+  .url-row { display: flex; gap: 8px; margin-bottom: 18px; padding-right: 44px; }
+  .url-input {
+    flex: 1; min-width: 0; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--section-border); background: var(--input-bg);
+    color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12.5px; outline: none;
+  }
+  .url-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,0.25); }
+  .btn {
+    padding: 9px 14px; border-radius: 8px; border: 1px solid var(--section-border);
+    background: var(--section-bg); color: var(--text); cursor: pointer; font-size: 12.5px; font-weight: 600;
+  }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn-accent {
+    background: var(--accent); color: #ffffff; border: none;
+    display: flex; align-items: center; gap: 6px; white-space: nowrap;
+  }
+  .spinner {
+    width: 13px; height: 13px; border-radius: 50%;
+    border: 2.5px solid rgba(255,255,255,0.35); border-top-color: #ffffff;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .preview-card {
+    display: flex; gap: 12px; padding: 14px; border-radius: 12px;
+    background: var(--section-bg); border: 1px solid var(--section-border);
+    margin-bottom: 18px; align-items: center;
+  }
+  .preview-thumb {
+    width: 112px; height: 63px; border-radius: 8px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent), #8E7CFF);
+    position: relative; overflow: hidden; background-size: cover; background-position: center;
+  }
+  .preview-info { display: flex; flex-direction: column; justify-content: center; min-width: 0; flex: 1; }
+  .preview-title {
+    font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .preview-channel { font-size: 12px; color: var(--text2); margin-top: 4px; }
+  .skeleton { background: var(--skeleton); border-radius: 6px; animation: pulse 1.1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+  .options-panel {
+    padding: 14px; border-radius: 12px; background: var(--section-bg);
+    border: 1px solid var(--section-border); margin-bottom: 22px;
+  }
+  .options-panel .section-label { margin-bottom: 10px; }
+  .options-row { display: flex; align-items: center; gap: 10px; }
+  .options-row > span { font-size: 13px; color: var(--text2); flex: none; }
+  select {
+    padding: 8px 10px; border-radius: 8px; border: 1px solid var(--section-border);
+    background: var(--input-bg); color: var(--text); font-size: 13px; cursor: pointer;
+  }
+  #quality-select { flex: 1; }
+
+  .queue-item, .history-item {
+    padding: 12px; border-radius: 12px; background: var(--section-bg);
+    border: 1px solid var(--section-border); margin-bottom: 8px;
+  }
+  .history-item { padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+  .history-item:hover { background: var(--section-border); }
+  .queue-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; gap: 8px; }
+  .queue-title-wrap { flex: 1; min-width: 0; }
+  .queue-title { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .queue-format { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .queue-actions { display: flex; gap: 6px; flex: none; }
+  .icon-btn {
+    width: 26px; height: 26px; border-radius: 50%; border: none;
+    background: var(--section-border); color: var(--text); cursor: pointer; font-size: 11px;
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .icon-btn.danger { color: var(--danger); }
+  .progress-track { height: 8px; border-radius: 999px; background: var(--section-border); overflow: hidden; }
+  .progress-fill {
+    height: 100%; border-radius: 999px;
+    background: var(--accent);
+    transition: width 0.25s ease;
+    position: relative; overflow: hidden;
+  }
+  .queue-meta { font-size: 11.5px; color: var(--text2); margin-top: 7px; }
+
+  .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .clear-link { font-size: 11.5px; color: var(--text2); cursor: pointer; background: none; border: none; }
+  .clear-link:hover { color: var(--danger); }
+  .history-row { display: flex; align-items: center; gap: 10px; }
+  .history-icon {
+    width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; color: white;
+  }
+  .history-info { min-width: 0; flex: 1; }
+  .history-title { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .history-meta { font-size: 11px; color: var(--text2); }
+  .empty-state { text-align: center; color: var(--text2); font-size: 12.5px; padding: 18px 0; }
+  .history-section { margin-top: 4px; padding-top: 18px; border-top: 1px solid var(--section-border); }
+
+  /* Bottom bar */
+  .bottom-bar {
+    position: relative;
+    border-top: 1px solid var(--section-border);
+    background: var(--section-bg);
+    padding: 18px 40px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .tab {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    background: transparent; border: none; cursor: pointer; padding: 6px 4px; width: 64px;
+    color: var(--text2);
+  }
+  .tab.active { color: var(--accent); }
+  .tab-label { font-size: 11.5px; font-weight: 600; }
+  .tab.active .tab-label { font-weight: 700; }
+  .center-btn {
+    position: absolute; left: 50%; top: 0; transform: translate(-50%, -42%);
+    width: 64px; height: 64px; border-radius: 50%; border: none;
+    background: var(--accent); color: white; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 10px 22px -6px rgba(79,70,229,0.7), 0 0 0 6px var(--bg);
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+  }
+  .center-btn:disabled { background: var(--skeleton); color: var(--text2); box-shadow: 0 0 0 6px var(--bg); cursor: default; }
+  .center-btn.success { background: var(--success); box-shadow: 0 10px 22px -6px rgba(5,150,105,0.5), 0 0 0 6px var(--bg); }
+
+  /* Settings dropdown */
+  .settings-backdrop { position: fixed; inset: 0; z-index: 40; background: transparent; }
+  .settings-panel {
+    position: absolute; top: 54px; right: 24px; width: 296px; max-height: 400px;
+    overflow-y: auto; overflow-x: hidden; border-radius: 12px; background: var(--bg);
+    border: 1px solid var(--section-border); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+    padding: 16px; z-index: 50;
+  }
+  .settings-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 10px; }
+  .settings-row label { white-space: nowrap; font-size: 13px; }
+  .toggle { width: 44px; height: 24px; border-radius: 999px; background: var(--skeleton); position: relative; cursor: pointer; flex-shrink: 0; border: none; }
+  .toggle.on { background: var(--accent); }
+  .toggle .knob { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: left 0.15s ease; }
+  .toggle.on .knob { left: 22px; }
+  .dark-toggle { position: relative; width: 56px; height: 30px; border-radius: 999px; background: var(--skeleton); border: none; cursor: pointer; }
+  .dark-toggle .sun, .dark-toggle .moon { position: absolute; top: 50%; transform: translateY(-50%); color: var(--text2); display: flex; }
+  .dark-toggle .sun { left: 7px; }
+  .dark-toggle .moon { right: 7px; }
+  .dark-toggle .knob { position: absolute; top: 3px; width: 24px; height: 24px; border-radius: 50%; background: #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: var(--accent); transition: left 0.2s ease; }
+  .divider { height: 1px; background: var(--section-border); margin: 4px 0 10px; }
+  .adv-row { display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-size: 13px; font-weight: 600; padding: 6px 0; background: none; border: none; color: var(--text); width: 100%; }
+  .adv-field { margin-bottom: 14px; }
+  .adv-field label { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; }
+  .adv-field input, .adv-field select { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--section-border); background: var(--input-bg); color: var(--text); font-size: 12.5px; font-family: inherit; }
+  .adv-field .checkbox-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; color: var(--text2); cursor: pointer; }
+  .back-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; cursor: pointer; }
+  .back-row strong { font-size: 11px; letter-spacing: 0.6px; color: var(--text2); }
+
+  /* Modal */
+  .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 60; }
+  .modal-card { width: 260px; border-radius: 12px; background: var(--bg); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); padding: 20px; text-align: center; }
+  .modal-card h3 { font-size: 14px; font-weight: 700; margin: 0 0 6px; }
+  .modal-card p { font-size: 12.5px; color: var(--text2); margin: 0 0 18px; }
+  .modal-actions { display: flex; gap: 8px; }
+  .modal-actions .btn { flex: 1; }
+  .btn-danger { background: var(--danger); color: white; border: none; }
+
+  /* Toast */
+  .toast {
+    position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+    max-width: 80%; background: #111827; color: white; padding: 10px 16px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 8px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1); z-index: 25;
+  }
+
+  /* Reveal wrapper: collapsed empty state until a URL is entered */
+  .reveal {
+    max-height: 0; opacity: 0; overflow: hidden; transform: translateY(-6px);
+    transition: max-height 0.45s cubic-bezier(0.4,0,0.2,1), opacity 0.35s ease, transform 0.35s ease;
+  }
+  .reveal.open { max-height: 2000px; opacity: 1; transform: translateY(0); }
+
+  /* Bottom bar greyed until a URL is entered */
+  .tab[disabled], .center-btn[disabled] { opacity: 0.4; pointer-events: none; }
+
+  /* Collapsible hourglass history toggle */
+  .history-toggle-row {
+    width: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between;
+    background: none; border: none; border-radius: 8px; padding: 8px 6px; cursor: pointer;
+    color: var(--text2); transition: background 0.15s ease;
+  }
+  .history-toggle-row:hover { background: var(--section-bg); }
+  .history-toggle-row .htr-left { display: flex; align-items: center; gap: 8px; }
+  .history-toggle-row .htr-left span.hlabel { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; }
+  .history-badge {
+    font-size: 10.5px; font-weight: 700; color: var(--text2); background: var(--section-bg);
+    border: 1px solid var(--section-border); border-radius: 999px; padding: 1px 7px;
+  }
+  .history-chevron { transition: transform 0.25s ease; }
+  .history-chevron.expanded { transform: rotate(180deg); }
+  .history-list-wrap {
+    max-height: 0; opacity: 0; overflow: hidden;
+    transition: max-height 0.35s ease, opacity 0.25s ease;
+  }
+  .history-list-wrap.expanded { max-height: 420px; opacity: 1; }
+
+  /* Icon-led vertical-menu settings rows */
+  .settings-row label, .adv-field label { display: flex; align-items: center; gap: 8px; }
+  .settings-row label svg, .adv-field label svg { color: var(--text2); flex: none; }
+  .settings-row { padding: 6px; border-radius: 8px; transition: background 0.15s ease; }
+  .settings-row:hover { background: var(--section-bg); }
+  .tooltip-wrap { position: relative; display: inline-flex; }
+  .tooltip-bubble {
+    position: absolute; bottom: 130%; left: -10px; width: 200px; background: #111827; color: #ffffff;
+    font-size: 11px; font-weight: 400; line-height: 1.4; padding: 8px 10px; border-radius: 8px;
+    opacity: 0; pointer-events: none; transition: opacity 0.15s ease;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.15), 0 4px 6px -4px rgba(0,0,0,0.15); z-index: 30;
+  }
+  .tooltip-wrap:hover .tooltip-bubble { opacity: 1; }
+  .adv-row:hover { background: var(--section-bg); border-radius: 8px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="body-content" id="body-content">
+    <button class="settings-btn" id="settings-toggle">
+      <svg width="16" height="16" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+
+    <div class="section-label">Video link</div>
+    <div class="url-row">
+      <input class="url-input" id="url-input" placeholder="Example: https://www.youtube.com/watch?v=..." />
+      <button class="btn btn-accent" id="fetch-btn">
+        <span id="fetch-btn-text">Fetch Info</span>
+      </button>
+    </div>
+
+    <div class="options-panel">
+      <div class="section-label">Options</div>
+      <div class="options-row">
+        <span>Quality:</span>
+        <select id="quality-select"><option>Fetch Info first</option></select>
+      </div>
+    </div>
+
+    <div class="reveal" id="reveal-wrapper">
+      <div id="preview-slot"></div>
+      <div id="queue-slot"></div>
+    </div>
+
+    <div class="history-section" id="history-slot"></div>
+  </div>
+
+  <div class="bottom-bar">
+    <button class="tab" id="tab-audio" disabled>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 18V5l10-2v13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="16" cy="16" r="3" stroke="currentColor" stroke-width="1.8"/></svg>
+      <span class="tab-label">Audio</span>
+    </button>
+    <button class="center-btn" id="download-btn" disabled>
+      <svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+    </button>
+    <button class="tab active" id="tab-video" disabled>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 5h13v14H4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M17 10l4-3v10l-4-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      <span class="tab-label">Video</span>
+    </button>
+  </div>
+
+  <div id="settings-slot"></div>
+  <div id="modal-slot"></div>
+  <div id="toast-slot"></div>
+</div>
+
+<script>
+const state = {
+  url: '', fetching: false, fetched: false, videoInfo: null,
+  downloadType: 'video', videoQuality: '', audioQuality: '',
+  audioQualityOptions: [],
+  queue: [], history: [],
+  settingsOpen: false, settingsView: 'main',
+  settings: {
+    darkMode: true, notifyOnComplete: true, clipboardMonitor: false,
+    cookiesMode: 'none', cookiesBrowser: 'chrome', cookiesFile: '',
+    codecPref: 'auto', containerFormat: 'mp4', filesizeLimit: '',
+    preferSmaller: false, rateLimit: '', userAgent: '',
+  },
+  confirmingClear: false, toast: null, downloadScope: 'single',
+  historyExpanded: false,
+};
+
+function updateReveal() {
+  const hasUrl = state.url.trim().length > 0;
+  document.getElementById('reveal-wrapper').classList.toggle('open', hasUrl);
+  document.getElementById('tab-audio').disabled = !hasUrl;
+  document.getElementById('tab-video').disabled = !hasUrl;
+  renderDownloadButton();
+  syncWindowHeight();
+}
+
+let _resizeRAF = null;
+function syncWindowHeight() {
+  if (!window.api || !window.api.resize_window) return;
+  if (_resizeRAF) cancelAnimationFrame(_resizeRAF);
+  _resizeRAF = requestAnimationFrame(() => {
+    const bc = document.getElementById('body-content');
+    // flex:1 stretches body-content to fill the window, so its scrollHeight
+    // normally reports that stretched box size, not the intrinsic content
+    // size. Temporarily shrink-wrap it to measure the real content height.
+    bc.style.flex = 'none';
+    bc.style.height = 'auto';
+    const bodyH = bc.scrollHeight;
+    bc.style.flex = '';
+    bc.style.height = '';
+    const barH = document.querySelector('.bottom-bar').offsetHeight;
+    window.api.resize_window({ height: bodyH + barH });
+  });
+}
+
+function applyTheme() {
+  document.documentElement.className = state.settings.darkMode ? 'dark' : 'light';
+}
+
+function fmtEta(sec) {
+  if (!sec && sec !== 0) return '--:--';
+  const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+function fmtSpeed(bytesPerSec) {
+  if (!bytesPerSec) return '';
+  return (bytesPerSec / 1024 / 1024).toFixed(1) + ' MB/s';
+}
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : s;
+  return d.innerHTML;
+}
+
+function renderPreview() {
+  const slot = document.getElementById('preview-slot');
+  if (state.fetching) {
+    slot.innerHTML = `
+      <div class="preview-card">
+        <div class="preview-thumb skeleton"></div>
+        <div class="preview-info" style="gap:8px;">
+          <div class="skeleton" style="width:160px;height:12px;"></div>
+          <div class="skeleton" style="width:100px;height:10px;"></div>
+        </div>
+      </div>`;
+  } else if (state.fetched && state.videoInfo) {
+    const v = state.videoInfo;
+    slot.innerHTML = `
+      <div class="preview-card">
+        <div class="preview-thumb" style="background-image:url('${v.thumbnail || ''}')"></div>
+        <div class="preview-info">
+          <div class="preview-title">${escapeHtml(v.title)}</div>
+          <div class="preview-channel">${escapeHtml(v.channel || '')}</div>
+        </div>
+      </div>`;
+  } else {
+    slot.innerHTML = '';
+  }
+}
+
+function renderQualitySelect() {
+  const sel = document.getElementById('quality-select');
+  sel.innerHTML = '';
+  if (!state.fetched) {
+    sel.innerHTML = '<option>Fetch Info first</option>';
+    return;
+  }
+  if (state.downloadType === 'video') {
+    (state.videoInfo.videoQualities || []).forEach(q => {
+      const opt = document.createElement('option');
+      opt.value = q; opt.textContent = q;
+      sel.appendChild(opt);
+    });
+    state.videoQuality = sel.value;
+  } else {
+    state.audioQualityOptions.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.id; opt.textContent = o.label;
+      sel.appendChild(opt);
+    });
+    state.audioQuality = sel.value;
+  }
+}
+
+function renderQueue() {
+  const slot = document.getElementById('queue-slot');
+  if (state.queue.length === 0) { slot.innerHTML = ''; return; }
+  slot.innerHTML = `<div class="section-label" style="margin-top:2px;">Downloads</div>` +
+    state.queue.map(item => `
+      <div class="queue-item">
+        <div class="queue-top">
+          <div class="queue-title-wrap">
+            <div class="queue-title">${escapeHtml(item.title)}</div>
+            <div class="queue-format">${escapeHtml(item.format || '')}</div>
+          </div>
+          <div class="queue-actions">
+            <button class="icon-btn" data-action="pause" data-id="${item.id}">${item.status === 'paused' ? '&#9654;' : '&#10073;&#10073;'}</button>
+            <button class="icon-btn danger" data-action="cancel" data-id="${item.id}">&#10005;</button>
+          </div>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:${item.progress}%"></div></div>
+        <div class="queue-meta">${item.status === 'paused' ? 'Paused · ' + item.progress.toFixed(0) + '%' : (item.status === 'processing' ? 'Processing…' : item.progress.toFixed(0) + '% · ' + fmtSpeed(item.speed) + ' · ' + fmtEta(item.eta) + ' left')}</div>
+      </div>
+    `).join('');
+}
+
+const HOURGLASS_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 3h10M7 21h10M7 3c0 4.5 3 6.5 5 8-2 1.5-5 3.5-5 8M17 3c0 4.5-3 6.5-5 8 2 1.5 5 3.5 5 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CHEVRON_ICON = '<svg width="14" height="14" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function renderHistory() {
+  const slot = document.getElementById('history-slot');
+  const rows = state.history.slice(0, 50).map((h, i) => `
+    <div class="history-item" data-history-index="${i}">
+      <div class="history-row">
+        <div class="history-icon" style="background:${h.type === 'audio' ? 'var(--audio-icon)' : 'var(--video-icon)'}">
+          ${h.type === 'audio'
+            ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M9 18V5l10-2v13" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" stroke="white" stroke-width="1.6"/><circle cx="16" cy="16" r="3" stroke="white" stroke-width="1.6"/></svg>'
+            : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M4 5h13v14H4z" stroke="white" stroke-width="1.6" stroke-linejoin="round"/><path d="M17 10l4-3v10l-4-3z" stroke="white" stroke-width="1.6" stroke-linejoin="round"/></svg>'}
+        </div>
+        <div class="history-info">
+          <div class="history-title">${escapeHtml(h.title)}</div>
+          <div class="history-meta">${escapeHtml(h.type)} &middot; ${escapeHtml(h.date)}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  slot.innerHTML = `
+    <button class="history-toggle-row" id="history-toggle-row">
+      <span class="htr-left">
+        ${HOURGLASS_ICON}
+        <span class="hlabel">Recent downloads</span>
+        ${state.history.length ? `<span class="history-badge">${state.history.length}</span>` : ''}
+      </span>
+      <span class="history-chevron${state.historyExpanded ? ' expanded' : ''}">${CHEVRON_ICON}</span>
+    </button>
+    <div class="history-list-wrap${state.historyExpanded ? ' expanded' : ''}">
+      <div class="history-header">
+        <span></span>
+        ${state.history.length ? '<button class="clear-link" id="clear-history-btn">Clear</button>' : ''}
+      </div>
+      ${state.history.length ? rows : '<div class="empty-state">No downloads yet.</div>'}
+    </div>
+  `;
+  document.getElementById('history-toggle-row').onclick = () => {
+    state.historyExpanded = !state.historyExpanded;
+    renderHistory();
+    syncWindowHeight();
+  };
+  const clearBtn = document.getElementById('clear-history-btn');
+  if (clearBtn) clearBtn.onclick = () => { state.confirmingClear = true; renderModal(); };
+  slot.querySelectorAll('.history-item').forEach((el) => {
+    el.onclick = () => {
+      const item = state.history[Number(el.dataset.historyIndex)];
+      if (item) window.api.open_folder(item.filepath);
+    };
+  });
+}
+
+function renderModal() {
+  const slot = document.getElementById('modal-slot');
+  if (state.confirmingClear) {
+    slot.innerHTML = `
+      <div class="modal-backdrop" id="clear-backdrop">
+        <div class="modal-card">
+          <h3>Clear download history?</h3>
+          <p>This can't be undone.</p>
+          <div class="modal-actions">
+            <button class="btn" id="clear-cancel">Cancel</button>
+            <button class="btn btn-danger" id="clear-confirm">Clear</button>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('clear-cancel').onclick = () => { state.confirmingClear = false; renderModal(); };
+    document.getElementById('clear-confirm').onclick = async () => {
+      await window.api.clear_history();
+      state.history = [];
+      state.confirmingClear = false;
+      renderModal(); renderHistory();
+    };
+  } else if (state.playlistPrompt) {
+    slot.innerHTML = `
+      <div class="modal-backdrop" id="playlist-backdrop">
+        <div class="modal-card">
+          <h3>This link is part of a playlist</h3>
+          <p>What would you like to download?</p>
+          <div class="modal-actions">
+            <button class="btn" id="pl-single">This Video</button>
+            <button class="btn btn-accent" id="pl-all">Entire Playlist</button>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('pl-single').onclick = () => { state.downloadScope = 'single'; state.playlistPrompt = false; renderModal(); doFetch(); };
+    document.getElementById('pl-all').onclick = () => { state.downloadScope = 'playlist'; state.playlistPrompt = false; renderModal(); doFetch(); };
+  } else {
+    slot.innerHTML = '';
+  }
+}
+
+function renderToast() {
+  const slot = document.getElementById('toast-slot');
+  if (!state.toast) { slot.innerHTML = ''; return; }
+  slot.innerHTML = `<div class="toast"><svg width="14" height="14" viewBox="0 0 24 24" style="flex:none;"><circle cx="12" cy="12" r="11" fill="#059669"/><path d="M7 12.5l3 3 7-7" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span style="overflow:hidden;text-overflow:ellipsis;">${escapeHtml(state.toast)}</span></div>`;
+}
+function showToast(msg) {
+  if (!state.settings.notifyOnComplete) return;
+  state.toast = msg; renderToast();
+  setTimeout(() => { state.toast = null; renderToast(); }, 3000);
+}
+
+const SUN_ICON = '<svg width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8L6 18M18 6l1.8-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const MOON_ICON = '<svg width="13" height="13" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/></svg>';
+const BELL_ICON = '<svg width="15" height="15" viewBox="0 0 24 24"><path d="M12 3a4 4 0 0 0-4 4v3.5c0 .8-.3 1.6-.9 2.2L6 14h12l-1.1-1.3a3 3 0 0 1-.9-2.2V7a4 4 0 0 0-4-4z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/><path d="M10 17a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>';
+const CLIPBOARD_ICON = '<svg width="15" height="15" viewBox="0 0 24 24"><rect x="7" y="4" width="10" height="16" rx="2" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>';
+const COOKIE_ICON = '<svg width="15" height="15" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg>';
+const INFO_ICON = '<svg width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M12 8v.01M12 11v5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const SLIDERS_ICON = '<svg width="15" height="15" viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="6" r="2" fill="currentColor"/><line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="1.6"/><circle cx="15" cy="12" r="2" fill="currentColor"/><line x1="4" y1="18" x2="20" y2="18" stroke="currentColor" stroke-width="1.6"/><circle cx="7" cy="18" r="2" fill="currentColor"/></svg>';
+const CODEC_ICON = '<svg width="14" height="14" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M8 5v14M16 5v14M3 9h5M16 9h5M3 15h5M16 15h5" stroke="currentColor" stroke-width="1.2"/></svg>';
+const CONTAINER_ICON = '<svg width="14" height="14" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/><path d="M3 7v10l9 4 9-4V7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/><path d="M12 11v10" stroke="currentColor" stroke-width="1.6"/></svg>';
+const FILESIZE_ICON = '<svg width="14" height="14" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>';
+const RATE_ICON = '<svg width="14" height="14" viewBox="0 0 24 24"><path d="M4 15a8 8 0 1 1 16 0" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M12 15l4-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const AGENT_ICON = '<svg width="14" height="14" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.6" fill="none"/><circle cx="9" cy="11" r="2" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M6 16c0-1.5 1.5-2.5 3-2.5s3 1 3 2.5" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M14 10h4M14 13h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+
+function renderSettings() {
+  const slot = document.getElementById('settings-slot');
+  if (!state.settingsOpen) { slot.innerHTML = ''; return; }
+  const s = state.settings;
+  if (state.settingsView === 'main') {
+    slot.innerHTML = `
+      <div class="settings-backdrop" id="settings-backdrop"></div>
+      <div class="settings-panel">
+        <div class="section-label" style="margin-bottom:14px;">Settings</div>
+        <div class="settings-row">
+          <label>${SUN_ICON}Dark mode</label>
+          <button class="dark-toggle" id="dark-toggle">
+            <span class="sun">${SUN_ICON}</span>
+            <span class="moon">${MOON_ICON}</span>
+            <span class="knob" style="left:${s.darkMode ? '29px' : '3px'};">${s.darkMode ? MOON_ICON : SUN_ICON}</span>
+          </button>
+        </div>
+        <div class="settings-row"><label>${BELL_ICON}Notify on completion</label>${toggleHtml('notifyOnComplete', s.notifyOnComplete)}</div>
+        <div class="settings-row"><label>${CLIPBOARD_ICON}Clipboard monitoring</label>${toggleHtml('clipboardMonitor', s.clipboardMonitor)}</div>
+        <div class="settings-row">
+          <label>${COOKIE_ICON}Cookies
+            <span class="tooltip-wrap">${INFO_ICON}<span class="tooltip-bubble">Import cookies from your browser or a cookies.txt file — needed for private, age-restricted, or members-only videos.</span></span>
+          </label>
+          <button class="btn" id="cookies-cycle">${s.cookiesMode === 'none' ? 'None' : s.cookiesMode === 'browser' ? 'Browser' : 'cookies.txt'}</button>
+        </div>
+        <div class="divider"></div>
+        <button class="adv-row" id="open-advanced"><span style="display:flex;align-items:center;gap:8px;">${SLIDERS_ICON}Advanced options</span><span>&#8250;</span></button>
+      </div>`;
+    document.getElementById('settings-backdrop').onclick = () => { state.settingsOpen = false; state.settingsView = 'main'; renderSettings(); };
+    document.getElementById('open-advanced').onclick = () => { state.settingsView = 'advanced'; renderSettings(); };
+    document.getElementById('dark-toggle').onclick = () => {
+      s.darkMode = !s.darkMode; applyTheme(); persistSettings(); renderSettings();
+    };
+    document.getElementById('cookies-cycle').onclick = async () => {
+      const order = ['none', 'browser', 'file'];
+      const next = order[(order.indexOf(s.cookiesMode) + 1) % order.length];
+      s.cookiesMode = next;
+      if (next === 'file') {
+        const path = await window.api.choose_cookies_file();
+        if (path) s.cookiesFile = path; else s.cookiesMode = 'none';
+      }
+      persistSettings(); renderSettings();
+    };
+    slot.querySelectorAll('.toggle').forEach(t => {
+      t.onclick = () => {
+        const key = t.dataset.key;
+        s[key] = !s[key];
+        if (key === 'clipboardMonitor') window.api.set_clipboard_monitor(s.clipboardMonitor);
+        persistSettings(); renderSettings();
+      };
+    });
+  } else {
+    slot.innerHTML = `
+      <div class="settings-backdrop" id="settings-backdrop"></div>
+      <div class="settings-panel">
+        <button class="back-row" id="back-main" style="background:none;border:none;cursor:pointer;padding:0;color:var(--text2);">
+          <span>&#8592;</span><strong>ADVANCED OPTIONS</strong>
+        </button>
+        <div class="adv-field">
+          <label>${CODEC_ICON}Codec preference
+            <span class="tooltip-wrap">${INFO_ICON}<span class="tooltip-bubble">Prefer AV1, VP9, or H.264 when a video offers multiple encodings. Format availability varies by site, so yt-dlp falls back automatically.</span></span>
+          </label>
+          <select id="adv-codec">
+            ${['auto','av1','vp9','h264'].map(v => `<option value="${v}" ${s.codecPref===v?'selected':''}>${v === 'auto' ? 'Auto' : v.toUpperCase()}</option>`).join('')}
+          </select>
+        </div>
+        <div class="adv-field">
+          <label>${CONTAINER_ICON}Container / merge format
+            <span class="tooltip-wrap">${INFO_ICON}<span class="tooltip-bubble">Sets the output container (MP4, MKV, WEBM). yt-dlp often downloads video and audio as separate streams and merges them into this format.</span></span>
+          </label>
+          <select id="adv-container">
+            ${['mp4','mkv','webm'].map(v => `<option value="${v}" ${s.containerFormat===v?'selected':''}>${v.toUpperCase()}</option>`).join('')}
+          </select>
+        </div>
+        <div class="adv-field">
+          <label>${FILESIZE_ICON}Filesize limit
+            <span class="tooltip-wrap">${INFO_ICON}<span class="tooltip-bubble">Cap the max file size, or fall back to the smallest available file that still meets your quality choice.</span></span>
+          </label>
+          <input id="adv-filesize" placeholder="No limit, e.g. 500M" value="${escapeHtml(s.filesizeLimit)}" />
+          <label class="checkbox-row"><input type="checkbox" id="adv-prefer-smaller" ${s.preferSmaller?'checked':''}/> Prefer smaller file</label>
+        </div>
+        <div class="adv-field">
+          <label>${RATE_ICON}Rate limit
+            <span class="tooltip-wrap">${INFO_ICON}<span class="tooltip-bubble">Throttle download speed to avoid tripping rate limits or bans on the source site.</span></span>
+          </label>
+          <input id="adv-ratelimit" placeholder="Unlimited, e.g. 2M" value="${escapeHtml(s.rateLimit)}" />
+        </div>
+        <div class="adv-field">
+          <label>${AGENT_ICON}User-agent override
+            <span class="tooltip-wrap">${INFO_ICON}<span class="tooltip-bubble">Send a custom browser User-Agent string with each request — useful when a site blocks yt-dlp's default identifier.</span></span>
+          </label>
+          <input id="adv-useragent" placeholder="Default (yt-dlp)" value="${escapeHtml(s.userAgent)}" />
+        </div>
+      </div>`;
+    document.getElementById('settings-backdrop').onclick = () => { state.settingsOpen = false; state.settingsView = 'main'; renderSettings(); };
+    document.getElementById('back-main').onclick = () => { state.settingsView = 'main'; renderSettings(); };
+    document.getElementById('adv-codec').onchange = e => { s.codecPref = e.target.value; persistSettings(); };
+    document.getElementById('adv-container').onchange = e => { s.containerFormat = e.target.value; persistSettings(); };
+    document.getElementById('adv-filesize').onchange = e => { s.filesizeLimit = e.target.value; persistSettings(); };
+    document.getElementById('adv-prefer-smaller').onchange = e => { s.preferSmaller = e.target.checked; persistSettings(); };
+    document.getElementById('adv-ratelimit').onchange = e => { s.rateLimit = e.target.value; persistSettings(); };
+    document.getElementById('adv-useragent').onchange = e => { s.userAgent = e.target.value; persistSettings(); };
+  }
+}
+function toggleHtml(key, on) {
+  return `<button class="toggle ${on ? 'on' : ''}" data-key="${key}"><span class="knob"></span></button>`;
+}
+async function persistSettings() {
+  try {
+    await window.api.save_settings({ settings: state.settings });
+  } catch (err) {
+    console.error('Failed to save settings:', err);
+  }
+}
+
+function renderDownloadButton() {
+  const btn = document.getElementById('download-btn');
+  btn.disabled = !state.fetched || state.url.trim().length === 0;
+}
+
+function renderTabs() {
+  document.getElementById('tab-audio').classList.toggle('active', state.downloadType === 'audio');
+  document.getElementById('tab-video').classList.toggle('active', state.downloadType === 'video');
+}
+
+async function doFetch() {
+  const url = state.url;
+  state.fetching = true; state.fetched = false;
+  document.getElementById('fetch-btn-text').innerHTML = '<span class="spinner"></span> Fetching…';
+  document.getElementById('fetch-btn').disabled = true;
+  renderPreview();
+
+  const res = await window.api.fetch_info({ url });
+  state.fetching = false;
+  document.getElementById('fetch-btn-text').textContent = 'Fetch Info';
+  document.getElementById('fetch-btn').disabled = false;
+
+  if (!res.ok) {
+    renderPreview();
+    alert('Could not fetch video info:\n' + res.error);
+    return;
+  }
+  state.videoInfo = res.data;
+  state.fetched = true;
+  renderPreview();
+  renderQualitySelect();
+  renderDownloadButton();
+}
+
+async function onFetchClick() {
+  const url = document.getElementById('url-input').value.trim();
+  if (!url) return;
+  state.url = url;
+  const isPlaylist = await window.api.check_playlist({ url });
+  if (isPlaylist) {
+    state.playlistPrompt = true;
+    renderModal();
+    return;
+  }
+  state.downloadScope = 'single';
+  doFetch();
+}
+
+async function onDownloadClick() {
+  if (!state.fetched) return;
+  const dest = await window.api.choose_destination();
+  if (!dest) return;
+
+  const job = {
+    mediaType: state.downloadType,
+    quality: state.downloadType === 'video' ? state.videoQuality : state.audioQuality,
+  };
+  const formatLabel = state.downloadType === 'video'
+    ? state.videoQuality
+    : ((state.audioQualityOptions.find(o => o.id === state.audioQuality) || {}).label || state.audioQuality);
+  const jobId = 'job-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+  await window.api.start_download({ jobId, url: state.url, job, destDir: dest, scope: state.downloadScope });
+  state.queue.push({
+    id: jobId, title: state.videoInfo.title, type: state.downloadType, format: formatLabel,
+    progress: 0, status: 'downloading', speed: 0, eta: null,
+  });
+  renderQueue();
+
+  const btn = document.getElementById('download-btn');
+  const original = btn.innerHTML;
+  btn.classList.add('success');
+  btn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  setTimeout(() => { btn.classList.remove('success'); btn.innerHTML = original; }, 700);
+}
+
+function onQueueProgress(jobId, pct, speed, eta, status) {
+  const item = state.queue.find(q => q.id === jobId);
+  if (!item) return;
+  item.progress = pct; item.speed = speed; item.eta = eta;
+  if (item.status !== 'paused') item.status = status;
+  renderQueue();
+}
+
+function onQueueDone(jobId, success, message, entries) {
+  state.queue = state.queue.filter(q => q.id !== jobId);
+  renderQueue();
+  if (success) {
+    showToast('Download complete: ' + (entries[0] ? entries[0].title : ''));
+    refreshHistory();
+  } else if (message !== 'Cancelled') {
+    alert(message);
+  }
+}
+
+async function refreshHistory() {
+  state.history = await window.api.get_history();
+  renderHistory();
+}
+
+function onClipboardUrl(url) {
+  const input = document.getElementById('url-input');
+  if (!input.value) { input.value = url; state.url = url; updateReveal(); }
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  if (btn.dataset.action === 'pause') {
+    const item = state.queue.find(q => q.id === id);
+    if (item.status === 'paused') { window.api.resume_download({ jobId: id }); item.status = 'downloading'; }
+    else { window.api.pause_download({ jobId: id }); item.status = 'paused'; }
+    renderQueue();
+  } else if (btn.dataset.action === 'cancel') {
+    window.api.cancel_download({ jobId: id });
+    state.queue = state.queue.filter(q => q.id !== id);
+    renderQueue();
+  }
+});
+
+function wireStaticEvents() {
+  document.getElementById('settings-toggle').onclick = () => { state.settingsOpen = !state.settingsOpen; renderSettings(); };
+  document.getElementById('fetch-btn').onclick = onFetchClick;
+  document.getElementById('download-btn').onclick = onDownloadClick;
+  document.getElementById('tab-audio').onclick = () => { state.downloadType = 'audio'; renderTabs(); renderQualitySelect(); };
+  document.getElementById('tab-video').onclick = () => { state.downloadType = 'video'; renderTabs(); renderQualitySelect(); };
+  document.getElementById('quality-select').onchange = (e) => {
+    if (state.downloadType === 'video') state.videoQuality = e.target.value;
+    else state.audioQuality = e.target.value;
+  };
+  document.getElementById('url-input').addEventListener('input', (e) => {
+    if (state.fetched && e.target.value !== state.url) {
+      state.fetched = false; state.videoInfo = null;
+      renderPreview(); renderQualitySelect();
+    }
+    state.url = e.target.value;
+    updateReveal();
+  });
+}
+
+function showFatalError(err) {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;inset:0;background:#111827;color:#ff6b6b;font:12px monospace;padding:16px;overflow:auto;z-index:9999;white-space:pre-wrap;';
+  el.textContent = 'Startup error:\n' + (err && err.stack ? err.stack : String(err));
+  document.body.appendChild(el);
+}
+
+async function init() {
+  applyTheme();
+  wireStaticEvents();
+  updateReveal();
+
+  new MutationObserver(() => syncWindowHeight()).observe(
+    document.getElementById('body-content'),
+    { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] }
+  );
+
+  window.api.onBackendEvent((msg) => {
+    if (msg.event === 'queueProgress') {
+      onQueueProgress(msg.data.jobId, msg.data.progress, msg.data.speed, msg.data.eta, msg.data.status);
+    } else if (msg.event === 'queueDone') {
+      onQueueDone(msg.data.jobId, msg.data.success, msg.data.message, msg.data.entries);
+    }
+  });
+  window.api.onClipboardUrl(onClipboardUrl);
+
+  try {
+    state.settings = await window.api.get_settings();
+    applyTheme();
+    state.audioQualityOptions = await window.api.get_audio_quality_options();
+    state.history = await window.api.get_history();
+    renderHistory();
+    renderQueue();
+    renderDownloadButton();
+    await window.api.set_clipboard_monitor(state.settings.clipboardMonitor);
+  } catch (err) {
+    showFatalError(err);
+  }
+}
+
+window.addEventListener('error', (e) => showFatalError(e.error || e.message));
+window.addEventListener('unhandledrejection', (e) => showFatalError(e.reason));
+
+applyTheme();
+init();
+</script>
+</body>
+</html>

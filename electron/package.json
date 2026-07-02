@@ -1,0 +1,47 @@
+{
+  "name": "ytdlp-downloader",
+  "version": "1.0.0",
+  "description": "YT-DLP Downloader",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.rojea.ytdlpdownloader",
+    "productName": "YT-DLP Downloader",
+    "directories": {
+      "output": "../dist-electron"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "webapp/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../dist/ytdlp-backend.exe",
+        "to": "backend/ytdlp-backend.exe"
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "signAndEditExecutable": false,
+      "signDlls": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "allowScripts": {
+    "electron@31.7.7": true
+  }
+}
