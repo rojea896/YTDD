@@ -158,6 +158,9 @@ def build_ydl_opts(job, dest_dir, settings, progress_hook):
         **cookie_opts(settings),
     }
 
+    if os.environ.get("FFMPEG_LOCATION"):
+        opts["ffmpeg_location"] = os.environ["FFMPEG_LOCATION"]
+
     if settings.get("rateLimit"):
         opts["ratelimit"] = _parse_size(settings["rateLimit"])
     if settings.get("filesizeLimit"):

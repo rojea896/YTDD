@@ -26,6 +26,10 @@
       {
         "from": "../dist/ytdlp-backend.exe",
         "to": "backend/ytdlp-backend.exe"
+      },
+      {
+        "from": "../vendor/ffmpeg",
+        "to": "ffmpeg"
       }
     ],
     "win": {

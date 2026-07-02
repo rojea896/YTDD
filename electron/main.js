@@ -16,15 +16,21 @@ const BACKEND_METHODS = [
 function startBackend() {
   let cmd;
   let args;
+  let ffmpegDir;
   if (app.isPackaged) {
     cmd = path.join(process.resourcesPath, 'backend', 'ytdlp-backend.exe');
     args = [];
+    ffmpegDir = path.join(process.resourcesPath, 'ffmpeg');
   } else {
     cmd = 'python';
     args = [path.join(__dirname, '..', 'backend_ipc.py')];
+    ffmpegDir = path.join(__dirname, '..', 'vendor', 'ffmpeg');
   }
 
-  pyProc = spawn(cmd, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+  pyProc = spawn(cmd, args, {
+    stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...process.env, FFMPEG_LOCATION: ffmpegDir },
+  });
 
   let buffer = '';
   pyProc.stdout.on('data', (chunk) => {

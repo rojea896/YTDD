@@ -7,3 +7,4 @@ electron/webapp/_check.js
 build/
 *.spec
 .DS_Store
+vendor/
