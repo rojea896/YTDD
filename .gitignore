@@ -4,7 +4,7 @@ dist/
 dist-electron/
 electron/node_modules/
 electron/webapp/_check.js
-build/
+/build/
 *.spec
 .DS_Store
 vendor/

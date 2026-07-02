@@ -91,6 +91,7 @@ function createWindow() {
     minHeight: 160,
     maxHeight: 1000,
     backgroundColor: '#111827',
+    icon: path.join(__dirname, 'build', 'icon.png'),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -100,6 +101,8 @@ function createWindow() {
   });
   win.loadFile(path.join(__dirname, 'webapp', 'index.html'));
 }
+
+app.setAppUserModelId('com.rojea.ytdlpdownloader');
 
 app.whenReady().then(() => {
   startBackend();
