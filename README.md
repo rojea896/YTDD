@@ -1,4 +1,4 @@
-# YT-DLP Downloader
+# YTDD (YT-DLP Downloader)
 
 A desktop GUI for downloading audio/video via [yt-dlp](https://github.com/yt-dlp/yt-dlp). Electron front end, Python backend, ffmpeg bundled in — recipients don't need Python or ffmpeg installed.
 
@@ -39,8 +39,8 @@ npx electron-builder --win
 ```
 
 Output lands in `dist-electron\`:
-- `YT-DLP Downloader Setup 1.0.0.exe` — NSIS installer (recommended for most people)
-- `YT-DLP Downloader 1.0.0.exe` — portable exe, no install needed, just run it
+- `YTDD Setup 1.0.0.exe` — NSIS installer (recommended for most people)
+- `YTDD 1.0.0.exe` — portable exe, no install needed, just run it
 
 ### Getting ffmpeg for a local build
 
@@ -80,7 +80,7 @@ A few minutes later, both installers appear under the repo's **Releases** page a
 Two options:
 
 1. **GitHub Releases** (best for repeat sharing) — push a tag as above, then send friends the release page URL. They just click the `.exe` they want.
-2. **Direct file share** (fastest one-off) — grab `YT-DLP Downloader Setup 1.0.0.exe` (or the portable exe) from `dist-electron\` and upload it wherever you'd share any file with someone: Google Drive, Dropbox, a Discord/Slack DM, WeTransfer, etc. Anyone with the link can download and run it.
+2. **Direct file share** (fastest one-off) — grab `YTDD Setup 1.0.0.exe` (or the portable exe) from `dist-electron\` and upload it wherever you'd share any file with someone: Google Drive, Dropbox, a Discord/Slack DM, WeTransfer, etc. Anyone with the link can download and run it.
 
 Either way, since it's unsigned (no Apple/Microsoft code-signing certificate), Windows SmartScreen will show an "Unrecognized app" warning the first time someone runs it — that's expected, not a sign of a broken build. They click **More info → Run anyway**.
 

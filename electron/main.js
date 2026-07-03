@@ -102,7 +102,7 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'webapp', 'index.html'));
 }
 
-app.setAppUserModelId('com.rojea.ytdlpdownloader');
+app.setAppUserModelId('com.rojea.ytdd');
 
 app.whenReady().then(() => {
   startBackend();

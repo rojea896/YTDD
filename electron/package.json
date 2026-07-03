@@ -1,7 +1,7 @@
 {
-  "name": "ytdlp-downloader",
+  "name": "ytdd",
   "version": "1.0.0",
-  "description": "YT-DLP Downloader",
+  "description": "YTDD",
   "main": "main.js",
   "private": true,
   "scripts": {
@@ -13,8 +13,8 @@
     "rcedit": "^4.0.1"
   },
   "build": {
-    "appId": "com.rojea.ytdlpdownloader",
-    "productName": "YT-DLP Downloader",
+    "appId": "com.rojea.ytdd",
+    "productName": "YTDD",
     "directories": {
       "output": "../dist-electron"
     },
