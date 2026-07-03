@@ -1,2 +1,2 @@
-yt-dlp>=2026.6.9
-pyinstaller>=6.21.0
+yt-dlp
+pyinstaller
