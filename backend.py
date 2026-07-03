@@ -107,6 +107,16 @@ def history_file_size():
         return 0
 
 
+def _human_size(num_bytes):
+    if not num_bytes:
+        return None
+    size = float(num_bytes)
+    for unit in ("B", "KB", "MB", "GB"):
+        if size < 1024 or unit == "GB":
+            return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+        size /= 1024
+
+
 def fetch_info(url, settings):
     """Return metadata + available quality options for a single video."""
     opts = {
@@ -120,20 +130,49 @@ def fetch_info(url, settings):
         info = ydl.extract_info(url, download=False)
 
     formats = info.get("formats", [])
-    heights = sorted({
-        f["height"] for f in formats
-        if f.get("vcodec") != "none" and f.get("height")
-    }, reverse=True)
+    duration = info.get("duration") or 0
+
+    video_formats = [
+        f for f in formats if f.get("vcodec") not in (None, "none") and f.get("height")
+    ]
+    heights = sorted({f["height"] for f in video_formats}, reverse=True)
     if not heights:
         heights = VIDEO_HEIGHT_LADDER[2:]
+
+    def _size_of(f):
+        return f.get("filesize") or f.get("filesize_approx") or 0
+
+    best_audio_size = max((_size_of(f) for f in formats if f.get("acodec") not in (None, "none")), default=0)
+
+    video_qualities = []
+    for h in heights:
+        best_video_size = max((_size_of(f) for f in video_formats if f.get("height") == h), default=0)
+        total = (best_video_size + best_audio_size) if best_video_size else 0
+        video_qualities.append({"label": f"{h}p", "size": _human_size(total)})
+
+    # Bitrate-based estimate (kbps * duration); lossless formats use typical
+    # PCM/FLAC rates since there's no fixed target bitrate to compute from.
+    audio_quality_sizes = {}
+    for o in AUDIO_QUALITY_OPTIONS:
+        if o["bitrate"]:
+            kbps = int(o["bitrate"])
+        elif o["codec"] == "wav":
+            kbps = 1411
+        elif o["codec"] == "flac":
+            kbps = 700
+        else:
+            kbps = 0
+        size = int(kbps * 1000 / 8 * duration) if kbps and duration else 0
+        audio_quality_sizes[o["id"]] = _human_size(size)
 
     return {
         "title": info.get("title") or url,
         "channel": info.get("uploader") or info.get("channel") or "",
-        "duration": info.get("duration") or 0,
+        "duration": duration,
         "thumbnail": info.get("thumbnail") or "",
-        "videoQualities": [f"{h}p" for h in heights],
+        "videoQualities": video_qualities,
         "audioQualities": [o["id"] for o in AUDIO_QUALITY_OPTIONS],
+        "audioQualitySizes": audio_quality_sizes,
     }
 
 
