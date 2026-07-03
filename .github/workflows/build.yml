@@ -27,7 +27,7 @@ jobs:
           mkdir -p vendor/ffmpeg
           curl -sL -o ffmpeg.zip "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
           unzip -q ffmpeg.zip -d ffmpeg-extract
-          DIR=$(find ffmpeg-extract -maxdepth 1 -type d -name "ffmpeg-*" | head -n 1)
+          DIR=$(find ffmpeg-extract -mindepth 1 -maxdepth 1 -type d -name "ffmpeg-*" | head -n 1)
           echo "Extracted to: $DIR"
           if [ -z "$DIR" ]; then
             echo "No ffmpeg-* directory found in ffmpeg-extract:" && ls -la ffmpeg-extract
