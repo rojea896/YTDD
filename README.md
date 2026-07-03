@@ -1,6 +1,8 @@
 # YTDD (YT-DLP Downloader)
 
-A desktop GUI for downloading audio/video via [yt-dlp](https://github.com/yt-dlp/yt-dlp). Electron front end, Python backend, ffmpeg bundled in — recipients don't need Python or ffmpeg installed.
+A lightweight Windows GUI for yt-dlp. Paste a link, pick a quality, done — ffmpeg included, nothing to install.
+
+Electron front end, Python backend, ffmpeg bundled in — recipients don't need Python or ffmpeg installed.
 
 ## Project layout
 
@@ -89,3 +91,7 @@ Either way, since it's unsigned (no Apple/Microsoft code-signing certificate), W
 - Not yet built for macOS — needs an actual Mac (or a `macos-latest` GitHub Actions job) since electron-builder can't cross-compile a `.dmg` from Windows, and the Python backend needs a Mac-native PyInstaller freeze too.
 - No code signing — fine for sharing with friends, but scaling beyond that would mean an Apple Developer account ($99/yr) and/or a Windows code-signing certificate to remove the SmartScreen/Gatekeeper warnings.
 - `history.json` gets a one-time-per-session warning modal if it crosses 5 MB (~10,000 entries); "Clear History" wired to the same button as the manual clear.
+
+## License
+
+GPL-3.0 (see `LICENSE`) — this repo bundles a GPL-licensed static ffmpeg build, so the project as a whole is distributed under GPL terms.
