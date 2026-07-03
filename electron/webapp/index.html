@@ -190,7 +190,7 @@
     box-shadow: 0 10px 22px -6px rgba(79,70,229,0.7), 0 0 0 14px var(--bg);
     transition: background 0.2s ease, box-shadow 0.2s ease;
   }
-  .center-btn:disabled { background: var(--skeleton); color: var(--text2); box-shadow: 0 0 0 14px var(--bg); cursor: default; }
+  .center-btn:disabled { background: var(--section-bg); color: var(--text2); box-shadow: 0 0 0 14px var(--bg); cursor: default; }
   .center-btn.success { background: var(--success); box-shadow: 0 10px 22px -6px rgba(5,150,105,0.5), 0 0 0 14px var(--bg); }
   .center-btn:not(:disabled):hover {
     box-shadow: 0 10px 22px -6px rgba(79,70,229,0.7), 0 0 0 14px var(--bg), 0 0 22px 6px rgba(79,70,229,0.6);
@@ -253,7 +253,11 @@
   .reveal.open { max-height: 2000px; opacity: 1; transform: translateY(0); }
 
   /* Bottom bar greyed until a URL is entered */
-  .tab[disabled], .center-btn[disabled] { opacity: 0.4; pointer-events: none; }
+  .tab[disabled] { opacity: 0.4; pointer-events: none; }
+  /* No opacity on center-btn[disabled]: opacity would fade its halo too,
+     letting the bar's border-top line show through it. The disabled look
+     comes entirely from :disabled's background/color swap below. */
+  .center-btn[disabled] { pointer-events: none; }
 
   /* Collapsible hourglass history toggle */
   .history-toggle-row {
@@ -378,6 +382,7 @@
 </div>
 
 <script>
+const HISTORY_PREVIEW_COUNT = 3;
 const state = {
   url: '', fetching: false, fetched: false, videoInfo: null,
   downloadType: 'video', videoQuality: '', audioQuality: '',
@@ -391,7 +396,7 @@ const state = {
     preferSmaller: false, rateLimit: '', userAgent: '',
   },
   confirmingClear: false, toast: null, downloadScope: 'single',
-  historyExpanded: false, historyVisibleCount: 5, currentView: 'main',
+  historyExpanded: false, historyVisibleCount: HISTORY_PREVIEW_COUNT, currentView: 'main',
   historySizeWarning: false, historySizeBytes: 0,
 };
 
@@ -550,7 +555,7 @@ function renderHistory() {
   const total = state.history.length;
   const visibleCount = Math.min(state.historyVisibleCount, total);
   const rows = state.history.slice(0, visibleCount).map((h, i) => historyItemHtml(h, i)).join('');
-  const scrollable = state.historyVisibleCount > 5;
+  const scrollable = state.historyVisibleCount > HISTORY_PREVIEW_COUNT;
   const hasMore = state.historyVisibleCount < total;
 
   slot.innerHTML = `
@@ -570,7 +575,7 @@ function renderHistory() {
         ${total ? rows : '<div class="empty-state">No downloads yet.</div>'}
       </div>
       ${hasMore ? `<button class="history-more-btn" id="history-more-btn">Show ${Math.min(10, total - visibleCount)} more</button>` : ''}
-      ${total > 5 ? `<button class="history-showall-btn" id="history-showall-btn">Show all ${total}</button>` : ''}
+      ${total > HISTORY_PREVIEW_COUNT ? `<button class="history-showall-btn" id="history-showall-btn">Show all ${total}</button>` : ''}
     </div>
   `;
   document.getElementById('history-toggle-row').onclick = () => {
@@ -647,7 +652,7 @@ function renderModal() {
       await window.api.clear_history();
       state.history = [];
       state.confirmingClear = false;
-      state.historyVisibleCount = 5;
+      state.historyVisibleCount = HISTORY_PREVIEW_COUNT;
       state.historySizeWarning = false;
       renderModal(); renderHistory();
       if (state.currentView === 'history') renderHistoryPage();
@@ -669,7 +674,7 @@ function renderModal() {
     document.getElementById('size-delete').onclick = async () => {
       await window.api.clear_history();
       state.history = [];
-      state.historyVisibleCount = 5;
+      state.historyVisibleCount = HISTORY_PREVIEW_COUNT;
       state.historySizeWarning = false;
       renderModal(); renderHistory();
       if (state.currentView === 'history') renderHistoryPage();
@@ -929,7 +934,7 @@ function onQueueDone(jobId, success, message, entries) {
 async function refreshHistory() {
   state.history = await window.api.get_history();
   state.historyExpanded = true;
-  if (state.historyVisibleCount < 5) state.historyVisibleCount = 5;
+  if (state.historyVisibleCount < HISTORY_PREVIEW_COUNT) state.historyVisibleCount = HISTORY_PREVIEW_COUNT;
   renderHistory();
   syncWindowHeight();
 }

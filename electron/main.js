@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, clipboard, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, clipboard, shell, screen } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 
@@ -90,6 +90,7 @@ function createWindow() {
     minWidth: 560,
     minHeight: 160,
     maxHeight: 1000,
+    resizable: false,
     backgroundColor: '#111827',
     icon: path.join(__dirname, 'build', 'icon.png'),
     autoHideMenuBar: true,
@@ -137,9 +138,19 @@ app.whenReady().then(() => {
 
   ipcMain.handle('resize_window', (_event, params) => {
     if (!win) return false;
-    const [curWidth] = win.getContentSize();
-    const height = Math.max(160, Math.min(1000, Math.round(params.height)));
-    win.setContentSize(curWidth, height, true);
+    const [, curContentHeight] = win.getContentSize();
+    const targetContentHeight = Math.max(160, Math.min(1000, Math.round(params.height)));
+    const bounds = win.getBounds();
+    const frameOverhead = bounds.height - curContentHeight;
+    const newOuterHeight = targetContentHeight + frameOverhead;
+
+    const workArea = screen.getDisplayMatching(bounds).workArea;
+    let newY = bounds.y;
+    if (newY + newOuterHeight > workArea.y + workArea.height) {
+      newY = Math.max(workArea.y, workArea.y + workArea.height - newOuterHeight);
+    }
+
+    win.setBounds({ x: bounds.x, y: newY, width: bounds.width, height: newOuterHeight });
     return true;
   });
 
