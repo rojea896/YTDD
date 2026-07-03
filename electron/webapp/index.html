@@ -167,8 +167,9 @@
     position: relative;
     border-top: 1px solid var(--section-border);
     background: var(--section-bg);
-    padding: 18px 40px 16px;
-    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 24px 16px;
+    display: flex; align-items: center; justify-content: center;
+    gap: 110px;
   }
   .tab {
     position: relative; z-index: 1;
@@ -184,11 +185,11 @@
     width: 64px; height: 64px; border-radius: 50%; border: none;
     background: var(--accent); color: white; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 10px 22px -6px rgba(79,70,229,0.7), 0 0 0 6px var(--bg);
+    box-shadow: 0 10px 22px -6px rgba(79,70,229,0.7), 0 0 0 14px var(--bg);
     transition: background 0.2s ease, box-shadow 0.2s ease;
   }
-  .center-btn:disabled { background: var(--skeleton); color: var(--text2); box-shadow: 0 0 0 6px var(--bg); cursor: default; }
-  .center-btn.success { background: var(--success); box-shadow: 0 10px 22px -6px rgba(5,150,105,0.5), 0 0 0 6px var(--bg); }
+  .center-btn:disabled { background: var(--skeleton); color: var(--text2); box-shadow: 0 0 0 14px var(--bg); cursor: default; }
+  .center-btn.success { background: var(--success); box-shadow: 0 10px 22px -6px rgba(5,150,105,0.5), 0 0 0 14px var(--bg); }
 
   /* Settings dropdown */
   .settings-backdrop { position: fixed; inset: 0; z-index: 40; background: transparent; }
@@ -902,7 +903,10 @@ function onQueueDone(jobId, success, message, entries) {
 
 async function refreshHistory() {
   state.history = await window.api.get_history();
+  state.historyExpanded = true;
+  if (state.historyVisibleCount < 5) state.historyVisibleCount = 5;
   renderHistory();
+  syncWindowHeight();
 }
 
 function onClipboardUrl(url) {
