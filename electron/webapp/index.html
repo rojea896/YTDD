@@ -749,10 +749,22 @@ function renderSettings() {
         <div class="settings-row"><label>${CLIPBOARD_ICON}Clipboard monitoring</label>${toggleHtml('clipboardMonitor', s.clipboardMonitor)}</div>
         <div class="settings-row">
           <label>${COOKIE_ICON}Cookies
-            <span class="tooltip-wrap">${INFO_ICON}<span class="tooltip-bubble">Import cookies from your browser or a cookies.txt file — needed for private, age-restricted, or members-only videos.</span></span>
+            <span class="tooltip-wrap">${INFO_ICON}<span class="tooltip-bubble">Import cookies from your browser or a cookies.txt file — needed for private, age-restricted, or members-only videos. If Chrome/Edge fails with a DPAPI decrypt error, try Firefox — newer Chrome versions encrypt cookies in a way yt-dlp can't read yet.</span></span>
           </label>
           <button class="btn" id="cookies-cycle">${s.cookiesMode === 'none' ? 'None' : s.cookiesMode === 'browser' ? 'Browser' : 'cookies.txt'}</button>
         </div>
+        ${s.cookiesMode === 'browser' ? `
+        <div class="settings-row" style="margin-top:-6px;">
+          <label style="font-size:12px;color:var(--text2);padding-left:24px;">Which browser</label>
+          <select id="cookies-browser-select" style="font-size:12px;padding:5px 8px;">
+            <option value="chrome">Chrome</option>
+            <option value="firefox">Firefox</option>
+            <option value="edge">Edge</option>
+            <option value="brave">Brave</option>
+            <option value="opera">Opera</option>
+            <option value="vivaldi">Vivaldi</option>
+          </select>
+        </div>` : ''}
         <div class="divider"></div>
         <button class="adv-row" id="open-advanced"><span style="display:flex;align-items:center;gap:8px;">${SLIDERS_ICON}Advanced options</span><span>&#8250;</span></button>
       </div>`;
@@ -771,6 +783,14 @@ function renderSettings() {
       }
       persistSettings(); renderSettings();
     };
+    const cookiesBrowserSelect = document.getElementById('cookies-browser-select');
+    if (cookiesBrowserSelect) {
+      cookiesBrowserSelect.value = s.cookiesBrowser || 'chrome';
+      cookiesBrowserSelect.onchange = (e) => {
+        s.cookiesBrowser = e.target.value;
+        persistSettings();
+      };
+    }
     slot.querySelectorAll('.toggle').forEach(t => {
       t.onclick = () => {
         const key = t.dataset.key;
