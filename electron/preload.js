@@ -18,5 +18,6 @@ api.onBackendEvent = (callback) => {
 api.onClipboardUrl = (callback) => {
   ipcRenderer.on('clipboard-url', (_event, url) => callback(url));
 };
+api.startDrag = (filePath) => ipcRenderer.send('ondragstart', filePath);
 
 contextBridge.exposeInMainWorld('api', api);

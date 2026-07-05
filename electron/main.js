@@ -1,5 +1,6 @@
-const { app, BrowserWindow, ipcMain, dialog, clipboard, shell, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, clipboard, shell, screen, nativeImage } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { spawn } = require('child_process');
 
 let pyProc = null;
@@ -134,6 +135,12 @@ app.whenReady().then(() => {
   ipcMain.handle('open_folder', (_event, filepath) => {
     shell.showItemInFolder(filepath);
     return true;
+  });
+
+  const dragIcon = nativeImage.createFromPath(path.join(__dirname, 'build', 'icon.png')).resize({ width: 32, height: 32 });
+  ipcMain.on('ondragstart', (event, filePath) => {
+    if (!filePath || !fs.existsSync(filePath)) return;
+    event.sender.startDrag({ file: filePath, icon: dragIcon });
   });
 
   ipcMain.handle('resize_window', (_event, params) => {

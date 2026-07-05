@@ -22,8 +22,9 @@ DEFAULT_SETTINGS = {
     "darkMode": True,
     "notifyOnComplete": True,
     "clipboardMonitor": False,
-    "cookiesMode": "none",       # none | browser | file
-    "cookiesBrowser": "chrome",
+    "cookiesEnabled": True,
+    "cookiesMode": "auto",       # auto | browser | file
+    "cookiesBrowser": "firefox",
     "cookiesFile": "",
     "codecPref": "auto",         # auto | av1 | vp9 | h264
     "containerFormat": "mp4",    # mp4 | mkv | webm
@@ -59,13 +60,57 @@ def _codec_filter(codec_pref):
     }.get(codec_pref, "")
 
 
+# Priority order for auto mode: firefox first since it stores cookies
+# unencrypted and yt-dlp reads them directly; Chromium-based browsers can
+# fail here on Chrome 127+'s App-Bound Encryption, which yt-dlp can't
+# decrypt via Windows DPAPI yet (https://github.com/yt-dlp/yt-dlp/issues/10927).
+_AUTO_COOKIE_BROWSERS = ["firefox", "chrome", "edge", "brave", "opera", "vivaldi"]
+_auto_cookie_file_cache = None  # None = not tried yet; False = tried, nothing worked; str = cached file path
+
+
+def _auto_extract_cookie_file():
+    """Try each browser in priority order, caching the first one that yields
+    real cookies to a Netscape cookies.txt under APP_DIR. A browser that
+    isn't installed or fails to decrypt (e.g. DPAPI) is silently skipped
+    rather than failing the whole fetch - this is what makes "auto" safe
+    to leave on by default."""
+    global _auto_cookie_file_cache
+    if _auto_cookie_file_cache is not None:
+        return _auto_cookie_file_cache or None
+
+    from yt_dlp.cookies import extract_cookies_from_browser
+
+    for browser in _AUTO_COOKIE_BROWSERS:
+        try:
+            jar = extract_cookies_from_browser(browser)
+            if len(jar) == 0:
+                continue
+            cache_path = os.path.join(APP_DIR, "auto_cookies.txt")
+            os.makedirs(APP_DIR, exist_ok=True)
+            jar.save(cache_path, ignore_discard=True, ignore_expires=True)
+            _auto_cookie_file_cache = cache_path
+            return cache_path
+        except Exception:
+            continue
+
+    _auto_cookie_file_cache = False
+    return None
+
+
 def cookie_opts(settings):
-    mode = settings.get("cookiesMode", "none")
+    if not settings.get("cookiesEnabled", True):
+        return {}
+    mode = settings.get("cookiesMode", "auto")
+    if mode == "file":
+        return {"cookiefile": settings["cookiesFile"]} if settings.get("cookiesFile") else {}
     if mode == "browser":
-        return {"cookiesfrombrowser": (settings.get("cookiesBrowser", "chrome").lower(),)}
-    if mode == "file" and settings.get("cookiesFile"):
+        return {"cookiesfrombrowser": (settings.get("cookiesBrowser", "firefox").lower(),)}
+    # auto: prefer a manually-configured file (already proven to work if set),
+    # otherwise try to silently auto-extract from whichever browser works.
+    if settings.get("cookiesFile") and os.path.exists(settings["cookiesFile"]):
         return {"cookiefile": settings["cookiesFile"]}
-    return {}
+    auto_file = _auto_extract_cookie_file()
+    return {"cookiefile": auto_file} if auto_file else {}
 
 
 def load_settings():
