@@ -133,14 +133,22 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('open_folder', (_event, filepath) => {
+    if (!filepath || !fs.existsSync(filepath)) return false;
     shell.showItemInFolder(filepath);
     return true;
   });
 
+  ipcMain.handle('open_file', async (_event, filepath) => {
+    if (!filepath || !fs.existsSync(filepath)) return false;
+    const err = await shell.openPath(filepath);
+    return !err;
+  });
+
   const dragIcon = nativeImage.createFromPath(path.join(__dirname, 'build', 'icon.png')).resize({ width: 32, height: 32 });
-  ipcMain.on('ondragstart', (event, filePath) => {
-    if (!filePath || !fs.existsSync(filePath)) return;
+  ipcMain.handle('ondragstart', (event, filePath) => {
+    if (!filePath || !fs.existsSync(filePath)) return false;
     event.sender.startDrag({ file: filePath, icon: dragIcon });
+    return true;
   });
 
   ipcMain.handle('resize_window', (_event, params) => {

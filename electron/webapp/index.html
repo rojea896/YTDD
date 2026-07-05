@@ -161,6 +161,11 @@
   .history-info { min-width: 0; flex: 1; }
   .history-title { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .history-meta { font-size: 11px; color: var(--text2); }
+  .history-folder-btn {
+    flex: none; width: 24px; height: 24px; border-radius: 6px; border: none; background: none;
+    color: var(--text2); display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .history-folder-btn:hover { background: var(--section-border); color: var(--text); }
   .empty-state { text-align: center; color: var(--text2); font-size: 12.5px; padding: 18px 0; }
   .history-section { margin-top: 4px; padding-top: 18px; border-top: 1px solid var(--section-border); }
 
@@ -526,12 +531,13 @@ function renderQueue() {
 }
 
 const HOURGLASS_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 3h10M7 21h10M7 3c0 4.5 3 6.5 5 8-2 1.5-5 3.5-5 8M17 3c0 4.5-3 6.5-5 8 2 1.5 5 3.5 5 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const FOLDER_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
 const CHEVRON_ICON = '<svg width="14" height="14" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const BACK_ICON = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 function historyItemHtml(h, i) {
   return `
-    <div class="history-item" data-history-index="${i}" draggable="true">
+    <div class="history-item" data-history-index="${i}" draggable="true" title="Double-click to open, or drag into another app">
       <div class="history-row">
         <div class="history-icon" style="background:${h.type === 'audio' ? 'var(--audio-icon)' : 'var(--video-icon)'}">
           ${h.type === 'audio'
@@ -542,22 +548,38 @@ function historyItemHtml(h, i) {
           <div class="history-title">${escapeHtml(h.title)}</div>
           <div class="history-meta">${escapeHtml(h.type)} &middot; ${escapeHtml(h.date)}</div>
         </div>
+        <button class="history-folder-btn" data-history-index="${i}" title="Show in folder">${FOLDER_ICON}</button>
       </div>
     </div>
   `;
 }
 
 function wireHistoryItemClicks(container) {
+  const missingToast = () => showErrorToast("File not found — it's been moved or deleted since downloading.");
+
   container.querySelectorAll('.history-item').forEach((el) => {
-    el.onclick = () => {
+    el.ondblclick = async () => {
       const item = state.history[Number(el.dataset.historyIndex)];
-      if (item) window.api.open_folder(item.filepath);
+      if (!item) return;
+      const ok = await window.api.open_file(item.filepath);
+      if (!ok) missingToast();
     };
-    el.addEventListener('dragstart', (e) => {
+    el.addEventListener('dragstart', async (e) => {
       e.preventDefault();
       const item = state.history[Number(el.dataset.historyIndex)];
-      if (item) window.api.startDrag(item.filepath);
+      if (!item) return;
+      const ok = await window.api.startDrag(item.filepath);
+      if (!ok) missingToast();
     });
+  });
+  container.querySelectorAll('.history-folder-btn').forEach((btn) => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const item = state.history[Number(btn.dataset.historyIndex)];
+      if (!item) return;
+      const ok = await window.api.open_folder(item.filepath);
+      if (!ok) missingToast();
+    };
   });
 }
 
@@ -712,10 +734,19 @@ function renderModal() {
 function renderToast() {
   const slot = document.getElementById('toast-slot');
   if (!state.toast) { slot.innerHTML = ''; return; }
-  slot.innerHTML = `<div class="toast"><svg width="14" height="14" viewBox="0 0 24 24" style="flex:none;"><circle cx="12" cy="12" r="11" fill="#059669"/><path d="M7 12.5l3 3 7-7" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span style="overflow:hidden;text-overflow:ellipsis;">${escapeHtml(state.toast)}</span></div>`;
+  const dot = state.toastIsError
+    ? '<circle cx="12" cy="12" r="11" fill="#dc2626"/><path d="M8 8l8 8M16 8l-8 8" stroke="white" stroke-width="2" stroke-linecap="round"/>'
+    : '<circle cx="12" cy="12" r="11" fill="#059669"/><path d="M7 12.5l3 3 7-7" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+  slot.innerHTML = `<div class="toast"><svg width="14" height="14" viewBox="0 0 24 24" style="flex:none;">${dot}</svg><span style="overflow:hidden;text-overflow:ellipsis;">${escapeHtml(state.toast)}</span></div>`;
+}
+function showErrorToast(msg) {
+  state.toastIsError = true;
+  state.toast = msg; renderToast();
+  setTimeout(() => { state.toast = null; renderToast(); }, 3000);
 }
 function showToast(msg) {
   if (!state.settings.notifyOnComplete) return;
+  state.toastIsError = false;
   state.toast = msg; renderToast();
   setTimeout(() => { state.toast = null; renderToast(); }, 3000);
 }
