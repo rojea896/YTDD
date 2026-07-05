@@ -145,6 +145,18 @@ def save_history(history):
         json.dump(history[:MAX_HISTORY_ENTRIES], f, indent=2)
 
 
+def remove_history_entry(filepath, date, delete_file=False):
+    history = load_history()
+    new_history = [e for e in history if not (e.get("filepath") == filepath and e.get("date") == date)]
+    save_history(new_history)
+    if delete_file:
+        try:
+            os.remove(filepath)
+        except OSError:
+            pass
+    return new_history
+
+
 def history_file_size():
     try:
         return os.path.getsize(HISTORY_FILE)

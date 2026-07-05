@@ -298,6 +298,28 @@
   .history-page-header .back-btn:hover { background: var(--section-bg); color: var(--text); }
   .history-page-header h2 { font-size: 15px; font-weight: 700; margin: 0; flex: 1; }
   .history-page-list { max-height: 460px; overflow-y: auto; }
+  .history-filter-row { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .history-filter-btn {
+    padding: 5px 10px; border-radius: 999px; border: 1px solid var(--section-border);
+    background: none; color: var(--text2); font-size: 11.5px; font-weight: 600; cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .history-filter-btn:hover { background: var(--section-bg); color: var(--text); }
+  .history-filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  /* Context menu */
+  .context-menu {
+    position: fixed; background: var(--bg); border: 1px solid var(--section-border); border-radius: 10px;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2), 0 4px 6px -4px rgba(0,0,0,0.2); z-index: 80;
+    padding: 6px; min-width: 190px;
+  }
+  .context-menu button {
+    display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; padding: 8px 10px;
+    border-radius: 7px; border: none; background: none; color: var(--text); font-size: 12.5px; cursor: pointer;
+  }
+  .context-menu button:hover { background: var(--section-bg); }
+  .context-menu button.danger { color: var(--danger); }
+  .context-menu .ctx-divider { height: 1px; background: var(--section-border); margin: 4px 2px; }
 
   /* Icon-led vertical-menu settings rows */
   .settings-row label, .adv-field label { display: flex; align-items: center; gap: 8px; }
@@ -386,6 +408,7 @@
   <div id="settings-slot"></div>
   <div id="modal-slot"></div>
   <div id="toast-slot"></div>
+  <div id="context-menu-slot"></div>
 </div>
 
 <script>
@@ -405,6 +428,7 @@ const state = {
   confirmingClear: false, toast: null, downloadScope: 'single',
   historyExpanded: false, historyVisibleCount: HISTORY_PREVIEW_COUNT, currentView: 'main',
   historySizeWarning: false, historySizeBytes: 0,
+  historyFilter: 'all', contextMenu: null, confirmingDeleteEntry: null,
 };
 
 function updateReveal() {
@@ -532,6 +556,9 @@ function renderQueue() {
 
 const HOURGLASS_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 3h10M7 21h10M7 3c0 4.5 3 6.5 5 8-2 1.5-5 3.5-5 8M17 3c0 4.5-3 6.5-5 8 2 1.5 5 3.5 5 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const FOLDER_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+const OPEN_FILE_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+const COPY_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="11" height="11" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M5 15V5a1 1 0 0 1 1-1h10" stroke="currentColor" stroke-width="1.6"/></svg>';
+const TRASH_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V4h6v3M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const CHEVRON_ICON = '<svg width="14" height="14" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const BACK_ICON = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
@@ -554,40 +581,96 @@ function historyItemHtml(h, i) {
   `;
 }
 
-function wireHistoryItemClicks(container) {
-  const missingToast = () => showErrorToast("File not found — it's been moved or deleted since downloading.");
+function missingFileToast() {
+  showErrorToast("File not found — it's been moved or deleted since downloading.");
+}
 
+// `list` must be the exact array historyItemHtml's rows were built from
+// (a filtered/sliced view won't share indices with state.history).
+function wireHistoryItemClicks(container, list) {
   container.querySelectorAll('.history-item').forEach((el) => {
+    const item = list[Number(el.dataset.historyIndex)];
+    if (!item) return;
     el.ondblclick = async () => {
-      const item = state.history[Number(el.dataset.historyIndex)];
-      if (!item) return;
       const ok = await window.api.open_file(item.filepath);
-      if (!ok) missingToast();
+      if (!ok) missingFileToast();
     };
     el.addEventListener('dragstart', async (e) => {
       e.preventDefault();
-      const item = state.history[Number(el.dataset.historyIndex)];
-      if (!item) return;
       const ok = await window.api.startDrag(item.filepath);
-      if (!ok) missingToast();
+      if (!ok) missingFileToast();
+    });
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      openContextMenu(e.clientX, e.clientY, item);
     });
   });
   container.querySelectorAll('.history-folder-btn').forEach((btn) => {
+    const item = list[Number(btn.dataset.historyIndex)];
+    if (!item) return;
     btn.onclick = async (e) => {
       e.stopPropagation();
-      const item = state.history[Number(btn.dataset.historyIndex)];
-      if (!item) return;
       const ok = await window.api.open_folder(item.filepath);
-      if (!ok) missingToast();
+      if (!ok) missingFileToast();
     };
   });
 }
+
+function openContextMenu(x, y, item) {
+  state.contextMenu = { x, y, item };
+  renderContextMenu();
+}
+
+function closeContextMenu() {
+  if (state.contextMenu) { state.contextMenu = null; renderContextMenu(); }
+}
+
+function renderContextMenu() {
+  const slot = document.getElementById('context-menu-slot');
+  const ctx = state.contextMenu;
+  if (!ctx) { slot.innerHTML = ''; return; }
+  const item = ctx.item;
+  // Clamp so the menu can't render off the right/bottom edge of the window.
+  const x = Math.min(ctx.x, window.innerWidth - 200);
+  const y = Math.min(ctx.y, window.innerHeight - 190);
+  slot.innerHTML = `
+    <div class="context-menu" style="left:${x}px; top:${y}px;">
+      <button id="ctx-open">${OPEN_FILE_ICON}Open file</button>
+      <button id="ctx-showfolder">${FOLDER_ICON}Show in folder</button>
+      <button id="ctx-copypath">${COPY_ICON}Copy file path</button>
+      <div class="ctx-divider"></div>
+      <button id="ctx-delete" class="danger">${TRASH_ICON}Remove from history</button>
+    </div>`;
+  document.getElementById('ctx-open').onclick = async () => {
+    closeContextMenu();
+    const ok = await window.api.open_file(item.filepath);
+    if (!ok) missingFileToast();
+  };
+  document.getElementById('ctx-showfolder').onclick = async () => {
+    closeContextMenu();
+    const ok = await window.api.open_folder(item.filepath);
+    if (!ok) missingFileToast();
+  };
+  document.getElementById('ctx-copypath').onclick = () => {
+    closeContextMenu();
+    navigator.clipboard.writeText(item.filepath);
+    showQuickToast('File path copied to clipboard');
+  };
+  document.getElementById('ctx-delete').onclick = () => {
+    closeContextMenu();
+    state.confirmingDeleteEntry = item;
+    renderModal();
+  };
+}
+document.addEventListener('click', closeContextMenu);
+document.addEventListener('scroll', closeContextMenu, true);
 
 function renderHistory() {
   const slot = document.getElementById('history-slot');
   const total = state.history.length;
   const visibleCount = Math.min(state.historyVisibleCount, total);
-  const rows = state.history.slice(0, visibleCount).map((h, i) => historyItemHtml(h, i)).join('');
+  const visibleList = state.history.slice(0, visibleCount);
+  const rows = visibleList.map((h, i) => historyItemHtml(h, i)).join('');
   const scrollable = state.historyVisibleCount > HISTORY_PREVIEW_COUNT;
   const hasMore = state.historyVisibleCount < total;
 
@@ -626,27 +709,53 @@ function renderHistory() {
   };
   const showAllBtn = document.getElementById('history-showall-btn');
   if (showAllBtn) showAllBtn.onclick = () => showHistoryPage();
-  wireHistoryItemClicks(slot);
+  wireHistoryItemClicks(slot, visibleList);
+}
+
+const HISTORY_FILTERS = [
+  { key: 'all', label: 'All time' },
+  { key: '24h', label: 'Last 24 hours' },
+  { key: 'week', label: 'Last week' },
+  { key: 'month', label: 'Last month' },
+  { key: 'year', label: 'Last year' },
+];
+
+function filterHistoryByRange(history, range) {
+  if (range === 'all') return history;
+  const msPerRange = { '24h': 86400000, week: 7 * 86400000, month: 30 * 86400000, year: 365 * 86400000 };
+  const cutoff = Date.now() - msPerRange[range];
+  return history.filter((h) => {
+    const t = new Date((h.date || '').replace(' ', 'T')).getTime();
+    return !isNaN(t) && t >= cutoff;
+  });
 }
 
 function renderHistoryPage() {
   const slot = document.getElementById('history-page-view');
   const total = state.history.length;
-  const rows = state.history.map((h, i) => historyItemHtml(h, i)).join('');
+  const filtered = filterHistoryByRange(state.history, state.historyFilter);
+  const rows = filtered.map((h, i) => historyItemHtml(h, i)).join('');
+  const filterButtons = HISTORY_FILTERS.map(f => `
+    <button class="history-filter-btn${state.historyFilter === f.key ? ' active' : ''}" data-filter="${f.key}">${f.label}</button>
+  `).join('');
   slot.innerHTML = `
     <div class="history-page-header">
       <button class="back-btn" id="history-back-btn">${BACK_ICON}</button>
       <h2>Download History (${total})</h2>
       ${total ? '<button class="clear-link" id="history-page-clear-btn">Clear</button>' : ''}
     </div>
+    <div class="history-filter-row">${filterButtons}</div>
     <div class="history-page-list">
-      ${total ? rows : '<div class="empty-state">No downloads yet.</div>'}
+      ${filtered.length ? rows : `<div class="empty-state">${total ? 'No downloads in this range.' : 'No downloads yet.'}</div>`}
     </div>
   `;
   document.getElementById('history-back-btn').onclick = () => hideHistoryPage();
   const clearBtn = document.getElementById('history-page-clear-btn');
   if (clearBtn) clearBtn.onclick = () => { state.confirmingClear = true; renderModal(); };
-  wireHistoryItemClicks(slot);
+  slot.querySelectorAll('.history-filter-btn').forEach((btn) => {
+    btn.onclick = () => { state.historyFilter = btn.dataset.filter; renderHistoryPage(); syncWindowHeight(); };
+  });
+  wireHistoryItemClicks(slot, filtered);
 }
 
 function showHistoryPage() {
@@ -712,6 +821,31 @@ function renderModal() {
       renderModal(); renderHistory();
       if (state.currentView === 'history') renderHistoryPage();
     };
+  } else if (state.confirmingDeleteEntry) {
+    const entry = state.confirmingDeleteEntry;
+    slot.innerHTML = `
+      <div class="modal-backdrop" id="delete-entry-backdrop">
+        <div class="modal-card">
+          <h3>Remove this download?</h3>
+          <p>${escapeHtml(entry.title)}</p>
+          <label class="checkbox-row" style="justify-content:center;margin-bottom:14px;">
+            <input type="checkbox" id="delete-entry-file-too" /> Also delete the file from disk
+          </label>
+          <div class="modal-actions">
+            <button class="btn" id="delete-entry-cancel">Cancel</button>
+            <button class="btn btn-danger" id="delete-entry-confirm">Remove</button>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('delete-entry-cancel').onclick = () => { state.confirmingDeleteEntry = null; renderModal(); };
+    document.getElementById('delete-entry-confirm').onclick = async () => {
+      const deleteFile = document.getElementById('delete-entry-file-too').checked;
+      await window.api.remove_history_entry({ filepath: entry.filepath, date: entry.date, deleteFile });
+      state.history = state.history.filter(e => !(e.filepath === entry.filepath && e.date === entry.date));
+      state.confirmingDeleteEntry = null;
+      renderModal(); renderHistory();
+      if (state.currentView === 'history') renderHistoryPage();
+    };
   } else if (state.playlistPrompt) {
     slot.innerHTML = `
       <div class="modal-backdrop" id="playlist-backdrop">
@@ -739,16 +873,15 @@ function renderToast() {
     : '<circle cx="12" cy="12" r="11" fill="#059669"/><path d="M7 12.5l3 3 7-7" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
   slot.innerHTML = `<div class="toast"><svg width="14" height="14" viewBox="0 0 24 24" style="flex:none;">${dot}</svg><span style="overflow:hidden;text-overflow:ellipsis;">${escapeHtml(state.toast)}</span></div>`;
 }
-function showErrorToast(msg) {
-  state.toastIsError = true;
+function showQuickToast(msg, isError) {
+  state.toastIsError = !!isError;
   state.toast = msg; renderToast();
   setTimeout(() => { state.toast = null; renderToast(); }, 3000);
 }
+function showErrorToast(msg) { showQuickToast(msg, true); }
 function showToast(msg) {
   if (!state.settings.notifyOnComplete) return;
-  state.toastIsError = false;
-  state.toast = msg; renderToast();
-  setTimeout(() => { state.toast = null; renderToast(); }, 3000);
+  showQuickToast(msg, false);
 }
 
 const SUN_ICON = '<svg width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8L6 18M18 6l1.8-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';

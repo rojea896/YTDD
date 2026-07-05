@@ -49,6 +49,9 @@ class RpcServer:
         size = backend.history_file_size()
         return {"sizeBytes": size, "tooBig": size >= backend.HISTORY_SIZE_WARNING_BYTES}
 
+    def remove_history_entry(self, params):
+        return backend.remove_history_entry(params["filepath"], params["date"], params.get("deleteFile", False))
+
     def clear_history(self, params):
         backend.save_history([])
         return True

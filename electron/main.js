@@ -11,7 +11,7 @@ const pending = new Map();
 const BACKEND_METHODS = [
   'get_settings', 'save_settings', 'get_audio_quality_options', 'get_history',
   'clear_history', 'check_playlist', 'fetch_info', 'start_download',
-  'pause_download', 'resume_download', 'cancel_download', 'check_history_size',
+  'pause_download', 'resume_download', 'cancel_download', 'check_history_size', 'remove_history_entry',
 ];
 
 function startBackend() {
