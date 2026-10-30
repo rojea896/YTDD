@@ -16,6 +16,10 @@ Windows will show an "Unrecognized app" warning the first time you open it since
 
 YTDD needs an internet connection anyway, and uses it to keep its download engine (yt-dlp) up to date by itself — so when YouTube or another site changes something, downloads usually start working again within days, without you installing anything new.
 
+## On Android
+
+There's a phone version too: share a link from TikTok, YouTube, Instagram or X to YTDD and get a video that plays everywhere, ready for WhatsApp. Download **YTDD for Android** from the same [Releases page](https://github.com/rojea896/YTDD/releases) — see [android/README.md](android/README.md) for how to install it.
+
 ## Features
 
 - Paste a link, pick a quality — video or audio-only (MP3, M4A, FLAC, WAV), with an estimated file size for each option

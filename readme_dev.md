@@ -2,6 +2,9 @@
 
 Maintainer detail that doesn't belong in the user-facing README.
 
+The Android app lives in [`android/`](android/) and has its own notes: [`android/readme_dev.md`](android/readme_dev.md).
+It's released separately under `android-v*` tags, which the Windows build workflow ignores.
+
 ## Layout
 
 | Path | What it is |

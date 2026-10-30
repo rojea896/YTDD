@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_video"
+        android:shortcutId="paste_video"
+        android:shortcutLongLabel="@string/shortcut_video_long"
+        android:shortcutShortLabel="@string/shortcut_video_short">
+        <intent
+            android:action="com.rojea.ytdd.action.PASTE_VIDEO"
+            android:targetClass="com.rojea.ytdd.QuickActivity"
+            android:targetPackage="com.rojea.ytdd" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_audio"
+        android:shortcutId="paste_audio"
+        android:shortcutLongLabel="@string/shortcut_audio_long"
+        android:shortcutShortLabel="@string/shortcut_audio_short">
+        <intent
+            android:action="com.rojea.ytdd.action.PASTE_AUDIO"
+            android:targetClass="com.rojea.ytdd.QuickActivity"
+            android:targetPackage="com.rojea.ytdd" />
+    </shortcut>
+</shortcuts>

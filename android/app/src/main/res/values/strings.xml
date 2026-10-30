@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">YTDD</string>
+    <string name="share_label">Download with YTDD</string>
+    <string name="process_text_label">Download video</string>
+    <string name="tile_label">Download link</string>
+    <string name="widget_label">YTDD quick download</string>
+    <string name="widget_description">Paste a copied link and download in one tap</string>
+    <string name="shortcut_video_short">Download link</string>
+    <string name="shortcut_video_long">Download link</string>
+    <string name="shortcut_audio_short">Get MP3</string>
+    <string name="shortcut_audio_long">Get MP3</string>
+</resources>

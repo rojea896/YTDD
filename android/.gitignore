@@ -1,0 +1,11 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+keystore/
+keystore.properties
+release/
+design/screenshots/
+design/screenshots-redesign/
