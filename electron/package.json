@@ -1,29 +1,55 @@
 {
   "name": "ytdd",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "YTDD",
   "main": "main.js",
   "private": true,
+  "type": "commonjs",
+  "author": {
+    "name": "Rojea Richards"
+  },
   "scripts": {
-    "start": "electron ."
+    "dev": "concurrently -k -n vite,electron -c cyan,magenta \"vite\" \"wait-on tcp:5174 && node scripts/launch-electron.js .\"",
+    "dev:vite": "vite",
+    "dev:electron": "node scripts/launch-electron.js .",
+    "start": "vite build && node scripts/launch-electron.js . --prod",
+    "build": "vite build",
+    "e2e": "vite build && node scripts/e2e-check.js",
+    "pack": "vite build && electron-builder --win --publish never",
+    "pack:dir": "vite build && electron-builder --win --dir --publish never"
   },
   "devDependencies": {
-    "electron": "^31.0.0",
-    "electron-builder": "^24.13.3",
-    "rcedit": "^4.0.1"
+    "@fluentui/react-components": "^9.74.4",
+    "@fluentui/react-icons": "^2.0.334",
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "concurrently": "^10.0.4",
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
+    "rcedit": "^4.0.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.2.0",
+    "wait-on": "^9.1.0",
+    "zustand": "^5.0.14"
   },
   "build": {
     "appId": "com.rojea.ytdd",
     "productName": "YTDD",
+    "copyright": "Copyright © 2026 Rojea Richards",
     "directories": {
-      "output": "../dist-electron"
+      "output": "../dist-electron",
+      "buildResources": "build"
     },
     "afterPack": "afterPack.js",
     "files": [
       "main.js",
       "preload.js",
-      "webapp/**/*",
-      "build/icon.png"
+      "channels.js",
+      "dist/**/*",
+      "build/icon.png",
+      "!**/*.map"
     ],
     "extraResources": [
       {
@@ -51,15 +77,12 @@
           ]
         }
       ],
-      "signAndEditExecutable": false,
-      "signDlls": false
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
-    }
-  },
-  "allowScripts": {
-    "electron@31.7.7": true
+    },
+    "npmRebuild": false
   }
 }

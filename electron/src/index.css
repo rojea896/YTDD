@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/*
+ * Tailwind is LAYOUT ONLY - flex, grid, gap, padding, sizing - same split as
+ * WorkTrack. Colour, typography and elevation come from Fluent tokens via
+ * Griffel (makeStyles + tokens). Deliberately no @theme palette here.
+ *
+ * Griffel's sheet is injected after this one, so on equal specificity it wins:
+ * Tailwind classes on a Fluent component (mt-2 on a <Text>) silently do
+ * nothing. Put them on plain DOM elements only.
+ */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  /* Fixed chrome; panes scroll internally. */
+  overflow: hidden;
+}

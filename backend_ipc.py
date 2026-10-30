@@ -9,10 +9,15 @@ Folder/file pickers and clipboard access are intentionally NOT handled here —
 those are native OS dialogs/APIs better owned by Electron's main process.
 """
 import json
+import os
 import sys
 import threading
+import time
 
 import backend
+
+# Re-check for a newer yt-dlp this often while the app stays open.
+ENGINE_RECHECK_SECONDS = 6 * 60 * 60
 
 _stdout_lock = threading.Lock()
 
@@ -30,6 +35,7 @@ def send_event(name, data):
 class RpcServer:
     def __init__(self):
         self.jobs = {}  # job_id -> backend.DownloadJob
+        backend.ENGINE.on_status = lambda status: send_event("engineStatus", status)
 
     # -------------------------------------------------------------- RPC ---
     def get_settings(self, params):
@@ -61,10 +67,25 @@ class RpcServer:
 
     def fetch_info(self, params):
         settings = backend.load_settings()
-        try:
-            return {"ok": True, "data": backend.fetch_info(params["url"], settings)}
-        except Exception as exc:
-            return {"ok": False, "error": str(exc)}
+        healed = False
+        while True:
+            try:
+                return {"ok": True, "data": backend.fetch_info(params["url"], settings)}
+            except Exception as exc:
+                # Same self-heal as downloads: a newer yt-dlp often fixes it.
+                if not healed and backend.try_self_heal(settings):
+                    healed = True
+                    continue
+                message, detail = backend.friendly_error(exc)
+                return {"ok": False, "error": message, "detail": detail}
+
+    def get_engine_status(self, params):
+        return backend.ENGINE.status()
+
+    def check_engine_update(self, params):
+        settings = backend.load_settings()
+        backend.ENGINE.check_for_update(settings.get("engineChannel", "nightly"))
+        return backend.ENGINE.status()
 
     def start_download(self, params):
         settings = backend.load_settings()
@@ -74,19 +95,22 @@ class RpcServer:
         dest_dir = params["destDir"]
         url = params["url"]
 
-        def on_progress(jid, pct, speed, eta, status):
+        def on_progress(jid, pct, speed, eta, status, stage=""):
             send_event("queueProgress", {
-                "jobId": jid, "progress": pct, "speed": speed, "eta": eta, "status": status,
+                "jobId": jid, "progress": pct, "speed": speed, "eta": eta, "status": status, "stage": stage,
             })
 
-        def on_done(jid, success, message, entries):
+        def on_done(jid, success, message, entries, detail=None):
             self.jobs.pop(jid, None)
-            if success and entries:
+            # Recorded even on failure: a conversion that fails still leaves
+            # a real downloaded file on disk.
+            if entries:
                 history = backend.load_history()
                 history = entries[::-1] + history
                 backend.save_history(history)
             send_event("queueDone", {
                 "jobId": jid, "success": success, "message": message, "entries": entries or [],
+                "detail": detail,
             })
 
         dl = backend.DownloadJob(job_id, url, job, dest_dir, settings, on_progress, on_done)
@@ -112,8 +136,23 @@ class RpcServer:
             job.cancel()
         return bool(job)
 
+    # ----------------------------------------------------------- Engine ---
+    def start_engine_maintenance(self):
+        """Load yt-dlp, report the JS runtime, then keep yt-dlp up to date."""
+        def loop():
+            backend.ENGINE.get()
+            backend.ENGINE.detect_js_runtime(os.environ.get("YTDD_JS_RUNTIME"))
+            while True:
+                settings = backend.load_settings()
+                if settings.get("autoUpdateEngine", True):
+                    backend.ENGINE.check_for_update(settings.get("engineChannel", "nightly"))
+                time.sleep(ENGINE_RECHECK_SECONDS)
+
+        threading.Thread(target=loop, daemon=True).start()
+
     # ------------------------------------------------------------- Loop ---
     def run(self):
+        self.start_engine_maintenance()
         for line in sys.stdin:
             line = line.strip()
             if not line:

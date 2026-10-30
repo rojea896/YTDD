@@ -3,7 +3,7 @@ __pycache__/
 dist/
 dist-electron/
 electron/node_modules/
-electron/webapp/_check.js
+
 /build/
 *.spec
 .DS_Store
